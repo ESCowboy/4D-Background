@@ -16,11 +16,27 @@ class Camera {
         this.attachEventListener();
     }
 
-    rotate() {
-        this.mousePos = this.resolveMousePosition();
-        this.rotation = m4.yRotation(-this.mousePos.x);
-        this.rotation = m4.xRotate(this.rotation, -this.mousePos.y);
+    setInitState({position, rotation, target, mousePos}){
+        this.target = target;
+        this.position = new Proxy(position, this.updatePosition());
+        this.rotation = rotation;
+        this.updateShaderPosition();
+    }
+
+    rotate(x, y) {
+        this.rotation = m4.yRotation(x);
+        this.rotation = m4.xRotate(this.rotation, y);
+        this.updateShaderPosition();
+    }
+
+    updateShaderPosition() {
         this.shaderPosition = m4.transformVector(this.rotation, Object.values(this.position));
+    }
+
+    rotateByMouse() {
+        this.mousePos = this.resolveMousePosition();
+        const { x, y } = this.mousePos;
+        this.rotate(-x, -y);
     }
 
     updatePosition() {
@@ -46,7 +62,7 @@ class Camera {
     }
 
     handleMouseMove() {
-        if (mouse.isMouseDown) this.rotate();
+        if (mouse.isMouseDown) this.rotateByMouse();
     }
 
     attachEventListener() {

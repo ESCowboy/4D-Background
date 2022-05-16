@@ -44,15 +44,10 @@ class RayMarching {
     }
 
     loadShader(url) {
-        return new Promise(resolve => {
-            var xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function () {
-                if (this.readyState == 4 && this.status == 200) {
-                    resolve(this.responseText);
-                }
-            };
-            xhttp.open("GET", `./src/shaders/${url}`, true);
-            xhttp.send();
+        return new Promise(async resolve => {
+            const res = await fetch(`./src/shaders/${url}`);
+            const shader = await res.text();
+            resolve(shader)
         })
     }
 

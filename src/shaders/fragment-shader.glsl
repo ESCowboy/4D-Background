@@ -5,13 +5,28 @@
 precision highp float;
 varying vec4 pos;
 
-uniform float iTime;
 uniform vec4 cameraPosition;
 uniform vec4 cameraTarget;
 uniform vec2 iResolution;
 uniform vec2 iMouse;
-uniform float scrollW;
 uniform float wValue;
+
+// ---- <gui-config> ---- 
+
+uniform float viewInside;
+
+uniform vec4 color_0;
+uniform vec4 color_1;
+uniform float gradient_line;
+uniform float gradient_rotation;
+
+uniform vec4 tessaractSize;
+uniform vec4 tessaractPosition;
+
+uniform vec3 sphere_color;
+uniform float sphere_radius;
+
+// ---- <gui-config/> ----
 
 #define ANTIALIASING 1
 
@@ -86,10 +101,11 @@ vec4 Rot4D(vec4 p4D, vec3 r){
 vec2 map( in vec4 pos ) {
     vec2 res = vec2(99999.,0);
     //input
-    res = vec2(sin(res.x), res.y);
+    if(viewInside == 1.)
+        res = vec2(sin(res.x), res.y);
 
-    vec4 tp = pos-vec4(0., iMouse.y, iMouse.x, 1.);
-    res = vec2(smin( res.x, udRoundTesseract( tp, vec4(.1, .1, 9., 1.), .7 ), 1.8), 1.0);
+    vec4 tp = pos-tessaractPosition;
+    res = vec2(smin( res.x, udRoundTesseract( tp, tessaractSize, .7 ), 1.8), 1.0);
     // res = vec2(smin( res.x,  sdSphere(pos-vec4(0., iMouse.y, iMouse.x, 1.), 2.), 0.5), 1.0);
     // res = vec2(opS(res.x, sdSphere(pos-vec4(0., iMouse.y, iMouse.x, 1.), 1.)), 1.);
 
@@ -112,6 +128,7 @@ vec2 castRay( in vec4 ro, in vec4 rd, in float maxd ) {
         h = res.x;
     }
     return vec2( t, t>=maxd ? sin(res.x) : mix(res.y, res.x, ro.x) );
+    // return vec2( t, t>=maxd ? sin(res.x) : 1. );
     // return vec2( t, t>=maxd ? -1. : res.y );
 }
 
@@ -161,7 +178,8 @@ vec3 render( in vec4 ro, in vec4 rd ){
         vec4 pos = ro + t*rd;
         vec4 nor = calcNormal( pos );
 
-		col = vec3(0.6) + 0.4*sin( vec3(0.05,0.08,0.10)*(m-1.0) );
+		col = vec3(1.);
+		// col = vec3(0.6) + 0.4*sin( vec3(0.05,0.08,0.10)*(m-1.0) );
 		
        // float ao = calcAO( pos, nor );
         float ao =1.;
@@ -169,23 +187,26 @@ vec3 render( in vec4 ro, in vec4 rd ){
 		vec4 lig = normalize( vec4(-0.6, 0.7, -0.5, 0.5) );
 		// vec4 lig = normalize( vec4(iMouse.x, iMouse.y, -0.5, 0.5) );
 
-		float amb = clamp( 0.5+0.5*nor.y, 0.0, 1.0 );
+		float amb = clamp( 0.5*nor.y, 0.0, 1.0 );
         float dif = clamp( dot( nor, lig ), 0.0, 1.0 );
-        float bac = clamp( dot( nor, normalize(vec4(-lig.x,0.0,-lig.z,0.0))), 0.0, 1.0 )*clamp( 1.0-pos.y,0.0,1.0);
-
-		float sh = 1.0;
-		// if( dif>0.02 ) { sh = softshadow( pos, lig, 0.025); dif *= sh; }
+        // float bac = clamp( dot( nor, normalize(vec4(-lig.x,0.0,-lig.z,0.0))), 0.0, 1.0 );
+        // float bac = clamp( dot( nor, normalize(vec4(-lig.x,0.0,-lig.z,0.0))), 0.0, 1.0 )*clamp( 1.0-pos.y,0.0,1.0);
 
 		vec3 brdf = vec3(0.0);
 		brdf += 0.20*amb*vec3(0.10,0.11,0.13)*ao;
-        brdf += .2*bac*vec3(0.15)*ao;
-        brdf += 1.20*dif*vec3(1.00,0.90,0.70);
+        // brdf += vec3(0.15)*ao;
+        // brdf += .2*bac*vec3(0.15)*ao;
+        brdf += 1.20*dif;
 
-		float pp = clamp( dot( reflect(rd,nor), lig ), 0.0, 1.0 );
-		float spe = sh*pow(pp,16.0);
+		float pp = clamp( dot( reflect(rd,nor), lig ), 0., 1. );
+		float spe = pow(pp,16.0);
 		float fre = ao*pow( clamp(1.0+dot(nor,rd),0.0,1.0), 2.0 );
+		// float fre = ao*pow( clamp(1.0+dot(nor,-rd),0.0,1.0), 2.0 );
 
 		col = col*brdf + vec3(1.0)*col*spe + 0.7*fre*(0.5+0.5*col);
+        // col = vec3(1., 0., 0.);
+        col += sphere_color;
+
 	}
 
 	col *= exp( -0.02*t*t );
@@ -195,15 +216,8 @@ vec3 render( in vec4 ro, in vec4 rd ){
 	return vec3(color);
 }
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
-	vec2 mo = iMouse.xy/iResolution.xy*20.;	 
-	float time = 20.0 + iTime*8.;
-	vec3 colorSum = vec3(0.);
-    
-    vec4 rd,
-        ro = cameraPosition,
-        ta = cameraTarget;
-        vec4 cw = normalize( ta-ro ),
+void mainImage( out vec4 fragColor, in vec2 fragCoord ) {    
+    vec4 cw = normalize( cameraTarget-cameraPosition ),
         cp = vec4( 0., 1., 0., 0. ),
         cu = normalize( vec4(cross(cw.xyz,cp.xyz),0.)),
         cv = normalize( vec4(cross(cu.xyz,cw.xyz),0.));  
@@ -211,10 +225,21 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
 		vec2 q = fragCoord.xy/iResolution.xy;
 		vec2 p = -1.0+2.0*q;
 		p.x *= iResolution.x/iResolution.y;
-		rd = normalize( p.x*cu + p.y*cv + 2.5*cw );
+		vec4 rd = normalize( p.x*cu + p.y*cv + 2.5*cw );
         // vec2 res = castRay(ro,rd, 19.0);
 
-	    fragColor= normalize(vec4(.4, .0, .6, .0)+vec4(.0, sin(pos.y*0.2), -pos.xy*.4)+vec4(sqrt(render( ro, rd )), 1.));
+	    // fragColor= normalize(color_0+vec4(.0, sin(pos.y*0.2), -pos.xy*.4)+vec4(sqrt(render( ro, rd )), 1.));
+
+        vec2 gline;
+        gline.x = pos.x * cos(gradient_rotation)-pos.y*sin(gradient_rotation);
+        gline.y = pos.x * sin(gradient_rotation)+pos.y*cos(gradient_rotation);
+
+	    fragColor= (mix(color_0, color_1, gline.x-gradient_line)+vec4((render( cameraPosition, rd )), 1.));
+
+    
+
+
+	    // fragColor= normalize(vec4(.4, .0, .6, .0)+vec4(.0, sin(pos.y*0.2), -pos.xy*.4)+vec4(sqrt(render( cameraPosition, rd )), 1.));
 	    // fragColor= mix(vec4(.4, .0, .6, .5), vec4(sqrt(render( ro, rd )), 1.), .6);
         // vec4 pinc = vec4(.4, .0, .6, .5);
 	    // fragColor= vec4(sqrt(render( ro, rd )), 1.);

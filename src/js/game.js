@@ -16,18 +16,26 @@ class Game {
 
     async init() {
         await this.raymarching.loadShaders();
-        new GUI(this);
 
         this.setupScene();
         this.raymarching.init(this.scene);
-
         this.setupUniforms();
+        this.addGUI();
         this.render();
+
+    }
+
+    addGUI(){
+        new GUI(this);
+        this.stats = new Stats();
+        this.stats.showPanel( 1 );
+        document.body.appendChild( this.stats.dom );
     }
 
     setupScene() {
-        for(let k = 0; k < 20; k++){
-            this.scene.add(Shape.sphere(Shape.randomVec4(2, 10, 10), .5, "smin"))
+        for (let i = 0; i < 10; i++) {
+            const position = Shape.randomVec4(1, 10, 10);
+            this.scene.add(Shape.sphere(position, .4+Math.random()/2, "smin"))
         }
     }
 
@@ -35,11 +43,9 @@ class Game {
         const uniforms = [
             { name: "iResolution", value: [w.gl.canvas.width, w.gl.canvas.height] },
             { name: "iMouse", value: [mouse.x, mouse.y] },
-            { name: "scrollW", value: mouse.scroll },
             { name: "wValue", value: 0 },
             { name: "cameraPosition", value: this.camera.shaderPosition },
             { name: "cameraTarget", value: this.camera.target },
-            { name: "iTime", value: 0 }
         ];
 
         this.raymarching.setUniforms(uniforms);
@@ -48,17 +54,14 @@ class Game {
     getMousePosition() {
         const cof = 100;
         return [
-            (mouse.x-window.innerWidth/2) / cof,
-            (mouse.y-window.innerHeight/2) / cof,
+            (mouse.x - window.innerWidth / 2) / cof,
+            (mouse.y - window.innerHeight / 2) / cof,
         ]
     }
 
     updateUniforms() {
-        this.raymarching.updateUniform("iTime", w.time);
         this.raymarching.updateUniform("cameraPosition", this.camera.shaderPosition);
-        this.raymarching.updateUniform("cameraTarget", this.camera.target);
-        this.raymarching.updateUniform("scrollW", mouse.scroll);
-        this.raymarching.updateUniform("wValue", w.time/20);
+        this.raymarching.updateUniform("wValue", w.time / 20);
         this.raymarching.updateUniform("iMouse", this.getMousePosition());
     }
 
@@ -66,6 +69,7 @@ class Game {
         requestAnimationFrame(this.render.bind(this));
         this.updateUniforms();
         this.raymarching.render();
+        this.stats.update();
     }
 }
 

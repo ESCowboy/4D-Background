@@ -27,7 +27,8 @@ class Shape {
     static sphere(position, radius, modifier) {
         let shader = '';
         const { x, y, z, w } = this.parsePosition(position);
-        const shape = `sdSphere(pos-vec4(${x}, (mod(${y}+wValue*${Math.random()*3+1}, 2.0)-1.0)*8.0, ${z}, ${w}), ${radius.toFixed(2)})`;
+        const shape = `sdSphere(pos-vec4(${x}, (mod(${y}+wValue*${Math.random()*3+1}, 1.5)-0.75)*8.0, ${z}, ${w}), sphere_radius+${radius.toFixed(2)})`;
+        // const shape = `sdSphere(pos-vec4(${x}, (mod(${y}+wValue*${Math.random()*3+1}, 2.0)*2.-1.0)*4.0, ${z}, ${w}), ${radius.toFixed(2)})`;
         switch (modifier) {
             case "smin": shader = `res = vec2(smin( res.x, ${shape}, 0.5), 1.0);`; break;
             default: shader = `res = opU( res, vec2( ${shape}, 1.0 ) );`; break;
